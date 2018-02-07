@@ -1,0 +1,6 @@
+﻿  Server.cpp
+c:\users\administrator\source\repos\udpcs_s\udpcs_s\server.cpp(49): warning C4101: 'client_len': unreferenced local variable
+c:\users\administrator\source\repos\udpcs_s\udpcs_s\server.cpp(51): warning C4101: 'buf': unreferenced local variable
+c:\users\administrator\source\repos\udpcs_s\udpcs_s\server.cpp(49): warning C4101: 'n': unreferenced local variable
+c:\users\administrator\source\repos\udpcs_s\udpcs_s\server.cpp(52): warning C4101: 'client': unreferenced local variable
+  UDPCS_S.vcxproj -> C:\Users\Administrator\source\repos\UDPCS_S\Debug\UDPCS_S.exe
