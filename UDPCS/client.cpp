@@ -57,9 +57,9 @@ typedef struct CONNECTION {
 int main(int argc, char **argv)
 {
 	int port = SERVER_UDP_PORT;
-	int	i, j, server_len, client_len;
+	int	server_len, client_len;
 	SOCKET sd;
-	char *pname, *host, rbuf[MAXLEN], sbuf[MAXLEN];
+	char *pname, *host;
 	struct	hostent	*hp;
 	struct	sockaddr_in server, client;
 	SYSTEMTIME stStartTime, stEndTime;
@@ -103,25 +103,36 @@ int main(int argc, char **argv)
 	CONNECTION conn;
 	conn.client = client;
 	conn.server = server;
-	conn.serverLen = server_len;
-	conn.clientLen = client_len;
+	conn.serverLen = sizeof(server);
+	conn.clientLen = sizeof(client);
 	conn.socket = sd;
 
 
 
-	CreateThread(NULL, 0, WorkerThread, (LPVOID) &conn, 0, &threadId);
+	HANDLE t = CreateThread(NULL, 0, WorkerThread, (LPVOID) &conn, 0, &threadId);
 
+	DWORD exitCode;
+	while (true)
+	{
+		GetExitCodeThread(t, &exitCode);
 
-	
-	exit(0);
+		if (exitCode != STILL_ACTIVE)
+		{
+			WSACleanup();
+			exit(exitCode);
+		}
+
+		Sleep(500);
+	}
+
 }
 
 DWORD WINAPI WorkerThread(LPVOID val)
 {
 	CONNECTION * conn = (CONNECTION *)val;
 
-	int	data_size = DEFLEN, port = SERVER_UDP_PORT;
-
+	int port = SERVER_UDP_PORT;
+	int data_size;
 	if (bind(conn->socket, (struct sockaddr *)&conn->client, sizeof(conn->client)) == -1)
 	{
 		perror("Can't bind name to socket");
@@ -136,21 +147,15 @@ DWORD WINAPI WorkerThread(LPVOID val)
 	}
 	printf("Port aasigned is %d\n", ntohs(conn->client.sin_port));
 
-	if (data_size > MAXLEN)
-	{
-		fprintf(stderr, "Data is too big\n");
-		exit(1);
-	}
-
-	
-
 
 
 	// transmit data "knock knock"
 	conn->serverLen = sizeof(conn->server);
 
-	strcpy(conn->recvBuf, send1);
+	strcpy_s(conn->sendBuf, send1);
 	data_size = strlen(send1);
+
+	printf("send data: %s", conn->sendBuf);
 	if (sendto(conn->socket, conn->sendBuf, data_size, 0, (struct sockaddr *)&conn->server, conn->serverLen) == -1)
 	{
 		perror("sendto failure");
@@ -167,20 +172,10 @@ DWORD WINAPI WorkerThread(LPVOID val)
 	}
 
 	//compare to "dochira deshou sama ka"
-
-	/*for (int i = 0; i < strlen(recv1); i++)
-	{
-		if (conn->recvBuf[i] != recv1[i])
-		{
-			printf("received invalid data from server on recv1");
-			return;
-		}
-	}*/
-
 	if (strncmp(recv1, conn->recvBuf, strlen(recv1)) != 0)
 	{
 		printf("received invalid data from server on recv1");
-		return;
+		return -1;
 	}
 
 	memset(conn->sendBuf, 0, MAXLEN);
@@ -188,7 +183,7 @@ DWORD WINAPI WorkerThread(LPVOID val)
 
 	//send Kanf....
 
-	strcpy(conn->recvBuf, send2);
+	strcpy_s(conn->recvBuf, send2);
 	data_size = strlen(send2);
 	if (sendto(conn->socket, conn->sendBuf, data_size, 0, (struct sockaddr *)&conn->server, conn->serverLen) == -1)
 	{
@@ -203,17 +198,22 @@ DWORD WINAPI WorkerThread(LPVOID val)
 		exit(1);
 	}
 
-	//compare to "knock knock"
+	if (strncmp(recv2, conn->recvBuf, strlen(recv2)) != 0)
+	{
+		printf("received invalid data from server on recv2");
+		return -1;
+	}
+	else {
+		printf("message received: %s", conn->recvBuf);
+	}
 
 
-	
 
-
-	if (strncmp(conn->sendBuf, conn->recvBuf, data_size) != 0)
-		printf("Data is corrupted\n");
 
 	closesocket(conn->socket);
 	WSACleanup();
+
+	return 0;
 }
 
 // Compute the delay between tl and t2 in milliseconds
